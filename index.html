@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>ОБЖ 8 класс: 30 карточек</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --text: #111827;
+      --success: #10b981;
+      --error: #ef4444;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Сетка карточек */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 15px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      height: 130px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      border-color: var(--primary);
+    }
+    .card.completed {
+      opacity: 0.6;
+      background: #eef2ff;
+      cursor: default;
+      filter: grayscale(1);
+    }
+    .card-number {
+      font-size: 32px;
+      font-weight: bold;
+      color: var(--primary);
+      line-height: 1;
+    }
+    .card-status {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    /* Экран работы */
+    .worksheet-screen {
+      display: none;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      max-width: 800px;
+      margin: 40px auto;
+      animation: fadeIn 0.4s;
+    }
+    .worksheet-screen.active {
+      display: block;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    h2.task-title {
+      color: var(--primary);
+      margin-bottom: 25px;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+
+    .question-block {
+      margin-bottom: 25px;
+      padding: 15px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border-left: 5px solid var(--primary);
+    }
+    .question-text {
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: block;
+      font-size: 15px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 60px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      resize: vertical;
+      font-size: 16px;
+      box-sizing: border-box;
+      outline: none;
+    }
+    textarea:focus { border-color: var(--primary); }
+    
+    .error-msg {
+      color: var(--error);
+      font-size: 13px;
+      margin-top: 5px;
+      display: none;
+    }
+    .has-error textarea { border-color: var(--error); }
+    .has-error .error-msg { display: block; }
+
+    button.action-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .btn-submit {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-submit:hover { background: #4338ca; }
+    .btn-submit:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    .btn-back {
+      background: #64748b;
+      color: white;
+      margin-top: 15px;
+    }
+    .btn-back:hover { background: #475569; }
+
+    #result-area {
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 8px;
+      display: none;
+      border: 1px solid transparent;
+    }
+    .result-success { background-color: #d1fae5; color: #065f46; border-color: #10b981; }
+    .result-fail { background-color: #fee2e2; color: #991b1b; border-color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 style="text-align: center;">Выбери карточку для работы</h1>
+    <div class="cards-grid" id="cards-container"></div>
+  </div>
+
+  <div id="worksheet-screen" class="worksheet-screen">
+    <h2 class="task-title" id="current-task-title">Карточка №</h2>
+    <form id="answer-form">
+      <div id="questions-container"></div>
+      <div style="margin-top: 30px;">
+        <p id="error-summary" style="color: var(--error); display:none;">Пожалуйста, заполните все 6 полей.</p>
+        <button type="button" class="action-btn btn-submit" id="submit-btn" onclick="submitWork()">Сдать работу</button>
+      </div>
+    </form>
+    <div id="result-area"></div>
+    <!-- Кнопка возврата появляется только после проверки -->
+    <button type="button" id="back-to-cards-btn" class="action-btn btn-back" style="display:none;" onclick="returnToCards()">Вернуться к карточкам</button>
+  </div>
+
+  <script>
+    const allQuestions = [
+      { q: "Как называются явления, процессы, способные в определённых условиях наносить ущерб здоровью человека?", a: "Опасность" },
+      { q: "Как называется фактор, вызывающий травмы или резкое ухудшение здоровья?", a: "Опасный фактор" },
+      { q: "Как называется фактор, который оказывает негативное воздействие на человека, приводящее к ухудшению самочувствия или заболеванию?", a: "Вредный фактор" },
+      { q: "Как называется система названий, терминов, употребляемых в какой-либо отрасли науки, техники?", a: "Номенклатура" },
+      { q: "Как называется специфическая человеческая форма активного отношения к окружающему миру?", a: "Деятельность" },
+      { q: "Как называются условия, при которых реализуются опасности?", a: "Причины" },
+      { q: "Как называется область научных знаний, изучающая опасности и способы защиты от них человека в любых условиях его обитания?", a: "Безопасность жизнедеятельности" },
+      { q: "Как называется состояние деятельности, при котором с определенной вероятностью исключено проявление опасностей?", a: "Безопасность" },
+      { q: "Как называется состояние полного физического, духовного и социального благополучия?", a: "Здоровье" },
+      { q: "Как называется сложный биологический процесс, происходящий в организме человека, позволяющий сохранить здоровье и работоспособность?", a: "Жизнедеятельность" },
+      { q: "Как называются опасности, связанные с преобразующей деятельностью человека?", a: "Антропогенные опасности" },
+      { q: "Как называется процесс обнаружения и установления характеристик опасностей для разработки профилактических мероприятий?", a: "Идентификация" },
+      { q: "Как называется частота реализации опасностей?", a: "Риск" },
+      { q: "Как называется зависимость между частотой событий и числом пораженных при этом людей?", a: "Социальный риск" },
+      { q: "Как называется обстановка на определенной территории, сложившаяся в результате аварии или бедствия, повлекшая жертвы или ущерб?", a: "Чрезвычайная ситуация" },
+      { q: "Как называется стихийное событие природного происхождения, способное вызвать отрицательные последствия?", a: "Опасное природное явление" },
+      { q: "Как называется повреждение, влекущее за собой выход из строя машин и механизмов?", a: "Авария" },
+      { q: "Как называется чрезвычайно опасное природное явление, способное привести к гибели людей и значительным потерям?", a: "Стихийное бедствие" },
+      { q: "Как называется происшествие в технической системе, сопровождающееся гибелью или пропажей людей?", a: "Катастрофа" },
+      { q: "Как называется состояние организма, выраженное в нарушении его нормальной жизнедеятельности?", a: "Болезнь" },
+      { q: "Как называется комплексная наука, изучающая поведение человека в опасных условиях?", a: "Основы безопасности жизнедеятельности" },
+      { q: "Как называется медицинское выражение, означающее смертельный исход болезни?", a: "Летальный исход" },
+      { q: "Как называется повреждение организма, вызванное внешним воздействием и нарушением целостности тканей?", a: "Травма" },
+      { q: "Как называется чрезвычайное событие особо крупных масштабов, отрицательно повлиявшее на здоровье людей и среду?", a: "Экологическое бедствие" },
+      { q: "Как называется совокупность методологических средств для подготовки решений по сложным проблемам?", a: "Системный анализ" },
+      { q: "Как называется совокупность взаимосвязанных компонентов, взаимодействующих для достижения результата?", a: "Система" },
+      { q: "Как называется неблагоприятная обстановка, которая может нанести вред человеку, имуществу или среде?", a: "Опасная ситуация" },
+      { q: "Как называется событие, состоящее из негативного воздействия с причинением ущерба ресурсам?", a: "Происшествие" },
+      { q: "Как называется событие, происходящее кратковременно и обладающее высоким уровнем негативного воздействия?", a: "Чрезвычайное происшествие" },
+      { q: "Как называется отказ или повреждение технических устройств на опасном производственном объекте?", a: "Инцидент" }
+    ];
+
+    const container = document.getElementById('cards-container');
+    const cardsData = [];
+
+    // Генерация 30 карточек с уникальными вопросами
+    for (let i = 1; i <= 30; i++) {
+      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+      const cardQuestions = shuffled.slice(0, 6);
+      cardsData.push({ id: i, questions: cardQuestions });
+
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.onclick = () => openWorksheet(i);
+      div.innerHTML = `
+        <span class="card-number">${i}</span>
+        <span class="card-status">Жми, чтобы начать</span>
+      `;
+      container.appendChild(div);
+    }
+
+    let currentCardId = null;
+
+    function openWorksheet(id) {
+      currentCardId = id;
+      const card = cardsData.find(c => c.id === id);
+      document.getElementById('current-task-title').textContent = `Карточка №${id}`;
+      
+      const qContainer = document.getElementById('questions-container');
+      qContainer.innerHTML = '';
+
+      card.questions.forEach((q, index) => {
+        const block = document.createElement('div');
+        block.className = 'question-block';
+        block.innerHTML = `
+          <span class="question-text">Вопрос ${index + 1}: ${q.q}</span>
+          <textarea id="q${index + 1}" placeholder="Напиши ответ..."></textarea>
+          <div class="error-msg">Обязательно заполни это поле!</div>
+        `;
+        block.dataset.correctAnswer = q.a;
+        qContainer.appendChild(block);
+      });
+
+      document.getElementById('error-summary').style.display = 'none';
+      document.getElementById('result-area').style.display = 'none';
+      document.getElementById('back-to-cards-btn').style.display = 'none'; // Скрываем кнопку возврата
+      document.getElementById('submit-btn').disabled = false;
+      document.getElementById('submit-btn').textContent = 'Сдать работу';
+
+      // Скрываем сетку, показываем форму
+      container.style.display = 'none';
+      document.getElementById('worksheet-screen').classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    function submitWork() {
+      const inputs = document.querySelectorAll('#questions-container textarea');
+      const errors = [];
+      let isValid = true;
+
+      inputs.forEach((input, index) => {
+        const val = input.value.trim();
+        const parent = input.closest('.question-block');
+        if (!val) {
+          parent.classList.add('has-error');
+          errors.push(`Вопрос ${index + 1}`);
+          isValid = false;
+        } else {
+          parent.classList.remove('has-error');
+        }
+      });
+
+      const summary = document.getElementById('error-summary');
+      if (!isValid) {
+        summary.textContent = `Не заполнены поля: ${errors.join(', ')}`;
+        summary.style.display = 'block';
+      } else {
+        summary.style.display = 'none';
+        checkAnswers(inputs);
+      }
+    }
+
+    function checkAnswers(inputs) {
+      let correctCount = 0;
+      let feedbackHtml = `<h3>Результаты проверки:</h3><ul>`;
+
+      inputs.forEach((input, index) => {
+        const userAnswer = input.value.trim().toLowerCase();
+        const correctAnswer = input.closest('.question-block').dataset.correctAnswer.toLowerCase();
+        const isCorrect = userAnswer === correctAnswer;
+
+        if (isCorrect) {
+          correctCount++;
+          feedbackHtml += `<li style="color: var(--success)">✅ Вопрос ${index + 1}: Верно! (Ответ: ${input.closest('.question-block').dataset.correctAnswer})</li>`;
+        } else {
+          feedbackHtml += `<li style="color: var(--error)">❌ Вопрос ${index + 1}: Ошибка. Твой ответ: "${input.value}". Правильный: <b>${input.closest('.question-block').dataset.correctAnswer}</b></li>`;
+        }
+      });
+      feedbackHtml += `</ul>`;
+
+      const resultArea = document.getElementById('result-area');
+      resultArea.style.display = 'block';
+      
+      if (correctCount === 6) {
+        resultArea.className = 'result-success';
+        resultArea.innerHTML = feedbackHtml + `<p style="margin-top:15px; font-weight:bold;">🎉 Отлично! Все 6 ответов верны. Карточка зачтена.</p>`;
+      } else {
+        resultArea.className = 'result-fail';
+        resultArea.innerHTML = feedbackHtml + `<p style="margin-top:15px;">Постарайся ещё раз! Обрати внимание на ошибки.</p>`;
+      }
+      document.getElementById('submit-btn').disabled = true;
+      document.getElementById('submit-btn').textContent = 'Работа сдана';
+      
+      // Показываем кнопку возврата
+      document.getElementById('back-to-cards-btn').style.display = 'inline-block';
+    }
+
+    function returnToCards() {
+      // Возвращаем сетку карточек
+      container.style.display = 'grid';
+      document.getElementById('worksheet-screen').classList.remove('active');
+      
+      // Опционально: можно пометить карточку как пройденную
+      const completedCard = document.querySelector(`.card[data-id="${currentCardId}"]`);
+      if (completedCard) {
+        completedCard.classList.add('completed');
+      }
+      
+      window.scrollTo(0, 0);
+    }
+  </script>
+</body>
+</html>
